@@ -78,8 +78,8 @@ class Creature:
             self.rect.x += self.speed
 
     def respawn(self):
-        """Reset creature to center of simulation field with full energy."""
-        self.rect.center = (SIM_WIDTH // 2, SIM_HEIGHT // 2)
+        """Reset creature inside the central safe zone with full energy."""
+        self.rect.center = (random.randint(300, 500), random.randint(200, 400))
         self.energy = self.max_energy
         self.alive = True
 
@@ -340,8 +340,10 @@ def main():
 
     clock = pygame.time.Clock()
 
-    # Initialize exactly ONE of each entity
-    creature = Creature(center_x=SIM_WIDTH // 2, center_y=SIM_HEIGHT // 2)
+    # Initialize exactly ONE of each entity inside the Safe Zone
+    creature = Creature(
+        center_x=random.randint(300, 500), center_y=random.randint(200, 400)
+    )
     food = Food()
     poison = Poison()
     wolf = Wolf()

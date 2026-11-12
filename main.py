@@ -337,7 +337,10 @@ def eval_genomes(genomes, config):
         nets.append(net)
         genome.fitness = 0
         ge.append(genome)
-        creatures.append(Creature(center_x=SIM_WIDTH // 2, center_y=SIM_HEIGHT // 2))
+        # Scatter creatures randomly inside central "Safe Zone" to give diverse starting scenarios
+        spawn_x = random.randint(300, 500)
+        spawn_y = random.randint(200, 400)
+        creatures.append(Creature(center_x=spawn_x, center_y=spawn_y))
 
     food = Food()
     poison = Poison()
