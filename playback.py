@@ -237,6 +237,8 @@ class Wolf:
             self.exact_x += (dx / dist) * move_step
             self.exact_y += (dy / dist) * move_step
             self.rect.center = (int(round(self.exact_x)), int(round(self.exact_y)))
+            self.x = max(0, min(self.x, 800 - 15))
+            self.y = max(0, min(self.y, 600 - 15))
 
     def draw(self, surface):
         """Render the wolf on the provided surface."""
