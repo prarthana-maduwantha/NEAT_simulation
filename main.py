@@ -130,16 +130,8 @@ class Wolf:
     """Represents an active predator that hunts the nearest creature."""
 
     def __init__(self, center_x=None, center_y=None, size=15, speed=3, color=RED):
-        if center_x is None:
-            center_x = random.randint(size, SIM_WIDTH - size)
-        if center_y is None:
-            center_y = random.randint(size, SIM_HEIGHT - size)
-
         self.size = size
         self.rect = pygame.Rect(0, 0, size, size)
-        self.rect.center = (center_x, center_y)
-        self.exact_x = float(self.rect.centerx)
-        self.exact_y = float(self.rect.centery)
         self.base_speed = 3
         self.sprint_speed = 6
         self.speed = self.base_speed
@@ -148,6 +140,43 @@ class Wolf:
         # Stamina and resting state
         self.stamina = 100.0
         self.max_stamina = 100.0
+        self.is_resting = False
+
+        if center_x is not None and center_y is not None:
+            self.rect.center = (center_x, center_y)
+            self.clamp_to_bounds()
+            self.exact_x = float(self.rect.centerx)
+            self.exact_y = float(self.rect.centery)
+        else:
+            self.respawn()
+
+    def clamp_to_bounds(self):
+        """Keep wolf within playable 800x600 boundaries."""
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > SIM_WIDTH:
+            self.rect.right = SIM_WIDTH
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > SIM_HEIGHT:
+            self.rect.bottom = SIM_HEIGHT
+
+    def respawn(self):
+        """Spawns or resets the wolf at a random edge of the screen (Top, Bottom, Left, or Right)."""
+        edge = random.choice(["Top", "Bottom", "Left", "Right"])
+        if edge == "Top":
+            self.rect.center = (random.randint(0, 800), 0)
+        elif edge == "Bottom":
+            self.rect.center = (random.randint(0, 800), 600)
+        elif edge == "Left":
+            self.rect.center = (0, random.randint(0, 600))
+        elif edge == "Right":
+            self.rect.center = (800, random.randint(0, 600))
+
+        self.clamp_to_bounds()
+        self.exact_x = float(self.rect.centerx)
+        self.exact_y = float(self.rect.centery)
+        self.stamina = self.max_stamina
         self.is_resting = False
 
     @property
@@ -312,8 +341,16 @@ def eval_genomes(genomes, config):
 
     food = Food()
     poison = Poison()
-    # Spawn one Wolf at the edge of the screen before the generation starts
-    wolf = Wolf(center_x=30, center_y=30)
+    # Spawn one Wolf at a random edge of the screen before the generation starts
+    edge = random.choice(["Top", "Bottom", "Left", "Right"])
+    if edge == "Top":
+        wolf = Wolf(center_x=random.randint(0, 800), center_y=0)
+    elif edge == "Bottom":
+        wolf = Wolf(center_x=random.randint(0, 800), center_y=600)
+    elif edge == "Left":
+        wolf = Wolf(center_x=0, center_y=random.randint(0, 600))
+    elif edge == "Right":
+        wolf = Wolf(center_x=800, center_y=random.randint(0, 600))
     clock = pygame.time.Clock()
     running = True
     frame_counter = 0
