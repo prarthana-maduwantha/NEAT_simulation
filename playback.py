@@ -98,9 +98,9 @@ class Food:
         self.respawn()
 
     def respawn(self):
-        """Instantly reposition the food within the 800x600 simulation area."""
-        self.rect.x = random.randint(0, SIM_WIDTH - self.size)
-        self.rect.y = random.randint(0, SIM_HEIGHT - self.size)
+        """Reposition the food within the simulation area with a 50-pixel padding from walls."""
+        self.rect.x = random.randint(50, 750)
+        self.rect.y = random.randint(50, 550)
 
     def draw(self, surface):
         """Render the food item on the provided surface."""
@@ -117,9 +117,9 @@ class Poison:
         self.respawn()
 
     def respawn(self):
-        """Instantly reposition the poison within the 800x600 simulation area."""
-        self.rect.x = random.randint(0, SIM_WIDTH - self.size)
-        self.rect.y = random.randint(0, SIM_HEIGHT - self.size)
+        """Reposition the poison within the simulation area with a 50-pixel padding from walls."""
+        self.rect.x = random.randint(50, 750)
+        self.rect.y = random.randint(50, 550)
 
     def draw(self, surface):
         """Render the poison on the provided surface."""
