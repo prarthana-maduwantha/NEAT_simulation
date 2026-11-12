@@ -366,11 +366,19 @@ def eval_genomes(genomes, config):
             dist_x_wolf = raw_dist_x_wolf if dist_to_wolf <= SIGHT_RADIUS else 0.0
             dist_y_wolf = raw_dist_y_wolf if dist_to_wolf <= SIGHT_RADIUS else 0.0
 
-            # 2. Wall distance senses (800x600 playable area)
-            dist_top = creature.y
-            dist_bottom = 600 - creature.y
-            dist_left = creature.x
-            dist_right = 800 - creature.x
+            # Cap distance values at 200 to prevent neural network saturation
+            food_dx = max(-200.0, min(200.0, float(food_dx)))
+            food_dy = max(-200.0, min(200.0, float(food_dy)))
+            poison_dx = max(-200.0, min(200.0, float(poison_dx)))
+            poison_dy = max(-200.0, min(200.0, float(poison_dy)))
+            dist_x_wolf = max(-200.0, min(200.0, float(dist_x_wolf)))
+            dist_y_wolf = max(-200.0, min(200.0, float(dist_y_wolf)))
+
+            # 2. Wall distance senses (800x600 playable area, capped at max 200)
+            dist_top = min(creature.y, 200)
+            dist_bottom = min(600 - creature.y, 200)
+            dist_left = min(creature.x, 200)
+            dist_right = min(800 - creature.x, 200)
 
             # 3. Pass sensory inputs into neural network (safely matches network input count)
             all_inputs = (
@@ -522,6 +530,7 @@ def eval_genomes(genomes, config):
 
 def run_neat(config_path):
     """Loads configuration and runs the NEAT evolutionary simulation."""
+    os.makedirs("checkpoints", exist_ok=True)
     # Load configuration
     config = neat.Config(
         neat.DefaultGenome,

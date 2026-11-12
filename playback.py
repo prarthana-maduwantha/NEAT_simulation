@@ -349,11 +349,19 @@ def main():
         dist_x_wolf = raw_dist_x_wolf if dist_to_wolf <= SIGHT_RADIUS else 0.0
         dist_y_wolf = raw_dist_y_wolf if dist_to_wolf <= SIGHT_RADIUS else 0.0
 
-        # 2. Wall distance senses (800x600 playable area)
-        dist_top = float(creature.y)
-        dist_bottom = float(SIM_HEIGHT - creature.y)
-        dist_left = float(creature.x)
-        dist_right = float(SIM_WIDTH - creature.x)
+        # Cap distance values at 200 to prevent neural network saturation
+        food_dx = max(-200.0, min(200.0, float(food_dx)))
+        food_dy = max(-200.0, min(200.0, float(food_dy)))
+        poison_dx = max(-200.0, min(200.0, float(poison_dx)))
+        poison_dy = max(-200.0, min(200.0, float(poison_dy)))
+        dist_x_wolf = max(-200.0, min(200.0, float(dist_x_wolf)))
+        dist_y_wolf = max(-200.0, min(200.0, float(dist_y_wolf)))
+
+        # 2. Wall distance senses (800x600 playable area, capped at max 200)
+        dist_top = min(float(creature.y), 200.0)
+        dist_bottom = min(float(SIM_HEIGHT - creature.y), 200.0)
+        dist_left = min(float(creature.x), 200.0)
+        dist_right = min(float(SIM_WIDTH - creature.x), 200.0)
 
         # 3. Pass 10 senses into the champion neural network
         all_inputs = (
