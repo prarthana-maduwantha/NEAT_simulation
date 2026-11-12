@@ -29,6 +29,9 @@ WEIGHT_NEG = (231, 76, 60)
 RED = (231, 76, 60)
 BLUE = (0, 150, 255)
 
+# Ensure checkpoints directory exists
+os.makedirs("checkpoints", exist_ok=True)
+
 # Initialize Pygame and screen
 pygame.init()
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -536,8 +539,8 @@ def run(config_path):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
 
-    # Automatically save simulation checkpoints every 10 generations
-    p.add_reporter(neat.Checkpointer(10))
+    # Automatically save simulation checkpoints every 10 generations in dedicated directory
+    p.add_reporter(neat.Checkpointer(generation_interval=10, filename_prefix='checkpoints/neat-checkpoint-'))
 
     # Run simulation for up to 500 generations
     winner = None
