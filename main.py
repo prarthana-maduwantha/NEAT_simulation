@@ -537,7 +537,9 @@ def eval_genomes(genomes, config):
             screen.blit(time_text, (SIM_WIDTH + (UI_PANEL_WIDTH - time_text.get_width()) // 2, 55))
 
             pygame.display.flip()
-            clock.tick(FPS)
+
+        if RENDER_MODE:
+            clock.tick(60)
 
 
 def run_neat(config_path):
