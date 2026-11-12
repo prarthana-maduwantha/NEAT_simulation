@@ -7,3 +7,4 @@ if %errorlevel% neq 0 (
     echo Playback simulation exited with an error.
     pause
 )
+

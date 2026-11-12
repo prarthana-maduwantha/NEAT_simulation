@@ -392,14 +392,14 @@ def eval_genomes(genomes, config):
             decision = output.index(max(output))
             creature.move(decision)
 
-            # 4. Out-of-bounds wall collision: lethal boundary (treat wall like poison)
+            # 4. Out-of-bounds / wall collision: catastrophic penalty (-50 fitness)
             if (
                 creature.rect.left < 0
                 or creature.rect.right > SIM_WIDTH
                 or creature.rect.top < 0
                 or creature.rect.bottom > SIM_HEIGHT
             ):
-                ge[i].fitness -= 10
+                ge[i].fitness -= 50
                 creature.alive = False
                 creatures.pop(i)
                 nets.pop(i)
