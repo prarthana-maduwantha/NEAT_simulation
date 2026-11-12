@@ -217,21 +217,17 @@ def draw_network(surface, genome, start_x, start_y):
     """Renders the neural network architecture of a genome on the UI panel."""
     node_positions = {}
 
-    # Hardcoded positions for 6 input nodes on the left side of UI panel
-    # -1: Food dX, -2: Food dY, -3: Poison dX, -4: Poison dY, -5: Wolf dX, -6: Wolf dY
-    node_positions[-1] = (start_x + 70, start_y + 110)
-    node_positions[-2] = (start_x + 70, start_y + 180)
-    node_positions[-3] = (start_x + 70, start_y + 250)
-    node_positions[-4] = (start_x + 70, start_y + 320)
-    node_positions[-5] = (start_x + 70, start_y + 390)
-    node_positions[-6] = (start_x + 70, start_y + 460)
+    # Hardcoded positions for 10 input nodes on the left side of UI panel
+    input_keys = [-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]
+    for idx, k in enumerate(input_keys):
+        node_positions[k] = (start_x + 70, start_y + 85 + idx * 47)
 
     # Hardcoded positions for 4 output nodes on the right side of UI panel
     # 0: Up, 1: Down, 2: Left, 3: Right
-    node_positions[0] = (start_x + 330, start_y + 140)
-    node_positions[1] = (start_x + 330, start_y + 240)
-    node_positions[2] = (start_x + 330, start_y + 340)
-    node_positions[3] = (start_x + 330, start_y + 440)
+    node_positions[0] = (start_x + 330, start_y + 150)
+    node_positions[1] = (start_x + 330, start_y + 250)
+    node_positions[2] = (start_x + 330, start_y + 350)
+    node_positions[3] = (start_x + 330, start_y + 450)
 
     # Dynamically calculate positions for any hidden nodes in the middle
     hidden_nodes = [k for k in genome.nodes.keys() if k not in (0, 1, 2, 3)]
@@ -242,7 +238,7 @@ def draw_network(surface, genome, start_x, start_y):
 
     # Panel Title
     title_surf = title_font.render("ALPHA NEURAL NETWORK", True, LIGHT_GRAY)
-    surface.blit(title_surf, (start_x + 85, start_y + 25))
+    surface.blit(title_surf, (start_x + 85, start_y + 20))
 
     # Draw connection lines
     for cg in genome.connections.values():
@@ -268,6 +264,10 @@ def draw_network(surface, genome, start_x, start_y):
         -4: "P_dy",
         -5: "W_dx",
         -6: "W_dy",
+        -7: "W_top",
+        -8: "W_bot",
+        -9: "W_lft",
+        -10: "W_rgt",
         0: "Up",
         1: "Down",
         2: "Left",
@@ -276,14 +276,15 @@ def draw_network(surface, genome, start_x, start_y):
 
     for node_id, pos in node_positions.items():
         # Node circle and outline
-        pygame.draw.circle(surface, NODE_COLOR, pos, 12)
-        pygame.draw.circle(surface, NODE_BORDER, pos, 12, 2)
+        radius = 9 if node_id < 0 else 12
+        pygame.draw.circle(surface, NODE_COLOR, pos, radius)
+        pygame.draw.circle(surface, NODE_BORDER, pos, radius, 2)
 
         # Labels
         label_text = labels.get(node_id, f"H{node_id}")
         txt_surf = font.render(label_text, True, LIGHT_GRAY)
-        if node_id in (-1, -2, -3, -4, -5, -6):
-            surface.blit(txt_surf, (pos[0] - txt_surf.get_width() - 16, pos[1] - txt_surf.get_height() // 2))
+        if node_id < 0:
+            surface.blit(txt_surf, (pos[0] - txt_surf.get_width() - 14, pos[1] - txt_surf.get_height() // 2))
         elif node_id in (0, 1, 2, 3):
             surface.blit(txt_surf, (pos[0] + 16, pos[1] - txt_surf.get_height() // 2))
         else:
@@ -362,8 +363,27 @@ def eval_genomes(genomes, config):
             dist_x_wolf = raw_dist_x_wolf if dist_to_wolf <= SIGHT_RADIUS else 0.0
             dist_y_wolf = raw_dist_y_wolf if dist_to_wolf <= SIGHT_RADIUS else 0.0
 
-            # 2. Pass 6 sensory inputs into neural network
-            output = nets[i].activate((food_dx, food_dy, poison_dx, poison_dy, dist_x_wolf, dist_y_wolf))
+            # 2. Wall distance senses (800x600 playable area)
+            dist_top = creature.y
+            dist_bottom = 600 - creature.y
+            dist_left = creature.x
+            dist_right = 800 - creature.x
+
+            # 3. Pass 10 sensory inputs into neural network
+            output = nets[i].activate(
+                (
+                    food_dx,
+                    food_dy,
+                    poison_dx,
+                    poison_dy,
+                    dist_x_wolf,
+                    dist_y_wolf,
+                    dist_top,
+                    dist_bottom,
+                    dist_left,
+                    dist_right,
+                )
+            )
 
             # 3. Highest output value maps to direction (0: Up, 1: Down, 2: Left, 3: Right)
             decision = output.index(max(output))
