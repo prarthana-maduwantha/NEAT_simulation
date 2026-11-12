@@ -1,3 +1,4 @@
+import math
 import os
 import pickle
 import random
@@ -25,6 +26,8 @@ NODE_COLOR = (235, 235, 235)
 NODE_BORDER = (20, 20, 20)
 WEIGHT_POS = (46, 204, 113)
 WEIGHT_NEG = (231, 76, 60)
+RED = (231, 76, 60)
+BLUE = (0, 150, 255)
 
 # Initialize Pygame and screen
 pygame.init()
@@ -45,6 +48,7 @@ class Creature:
         self.rect.center = (center_x, center_y)
         self.speed = speed
         self.color = color
+        self.max_energy = 200
         self.energy = 200
         self.alive = True
 
@@ -118,23 +122,116 @@ class Poison:
         pygame.draw.rect(surface, self.color, self.rect)
 
 
+class Wolf:
+    """Represents an active predator that hunts the nearest creature."""
+
+    def __init__(self, center_x=None, center_y=None, size=15, speed=3, color=RED):
+        if center_x is None:
+            center_x = random.randint(size, SIM_WIDTH - size)
+        if center_y is None:
+            center_y = random.randint(size, SIM_HEIGHT - size)
+
+        self.size = size
+        self.rect = pygame.Rect(0, 0, size, size)
+        self.rect.center = (center_x, center_y)
+        self.exact_x = float(self.rect.centerx)
+        self.exact_y = float(self.rect.centery)
+        self.base_speed = 3
+        self.sprint_speed = 6
+        self.speed = self.base_speed
+        self.color = color
+
+        # Stamina and resting state
+        self.stamina = 100.0
+        self.max_stamina = 100.0
+        self.is_resting = False
+
+    @property
+    def x(self):
+        return self.rect.x
+
+    @x.setter
+    def x(self, val):
+        self.rect.x = val
+        self.exact_x = float(self.rect.centerx)
+
+    @property
+    def y(self):
+        return self.rect.y
+
+    @y.setter
+    def y(self, val):
+        self.rect.y = val
+        self.exact_y = float(self.rect.centery)
+
+    def chase(self, creatures):
+        """Hunts the closest creature with dynamic stamina and sprinting mechanics."""
+        if not creatures:
+            return
+
+        # 1. Find the closest creature and calculate geometric distance
+        target_creature = min(
+            creatures,
+            key=lambda c: (c.rect.centerx - self.rect.centerx) ** 2 + (c.rect.centery - self.rect.centery) ** 2,
+        )
+        dx = target_creature.rect.centerx - self.rect.centerx
+        dy = target_creature.rect.centery - self.rect.centery
+        dist = math.hypot(dx, dy)
+
+        # 2. If self.is_resting is True: speed is 0. Increase self.stamina by 1 per frame.
+        if self.is_resting:
+            self.speed = 0
+            self.stamina = min(self.max_stamina, self.stamina + 1.0)
+            if self.stamina >= self.max_stamina:
+                self.is_resting = False
+            return
+
+        # 3. If self.is_resting is False: Check distance to target
+        if dist < 150:
+            # Sprint mode: move at sprint_speed and decrease stamina by 2 per frame
+            self.speed = self.sprint_speed
+            self.stamina -= 2.0
+        else:
+            # Cruise mode: move at base_speed and regenerate stamina by 0.5 per frame
+            self.speed = self.base_speed
+            self.stamina = min(self.max_stamina, self.stamina + 0.5)
+
+        # 4. If self.stamina <= 0 at any point, set self.is_resting = True
+        if self.stamina <= 0:
+            self.stamina = 0.0
+            self.is_resting = True
+
+        # Move towards target at self.speed
+        if dist > 0 and self.speed > 0:
+            move_step = min(float(self.speed), dist)
+            self.exact_x += (dx / dist) * move_step
+            self.exact_y += (dy / dist) * move_step
+            self.rect.center = (int(round(self.exact_x)), int(round(self.exact_y)))
+
+    def draw(self, surface):
+        """Render the wolf on the provided surface."""
+        pygame.draw.rect(surface, self.color, self.rect)
+
+
 def draw_network(surface, genome, start_x, start_y):
     """Renders the neural network architecture of a genome on the UI panel."""
     node_positions = {}
 
-    # Hardcoded positions for 4 input nodes on the left side of UI panel
-    # -1: Food dX, -2: Food dY, -3: Poison dX, -4: Poison dY
-    node_positions[-1] = (start_x + 70, start_y + 130)
-    node_positions[-2] = (start_x + 70, start_y + 230)
-    node_positions[-3] = (start_x + 70, start_y + 330)
-    node_positions[-4] = (start_x + 70, start_y + 430)
+    # Hardcoded positions for 6 input nodes on the left side of UI panel
+    # -1: Food dX, -2: Food dY, -3: Poison dX, -4: Poison dY, -5: Wolf dX, -6: Wolf dY
+    node_positions[-1] = (start_x + 70, start_y + 110)
+    node_positions[-2] = (start_x + 70, start_y + 180)
+    node_positions[-3] = (start_x + 70, start_y + 250)
+    node_positions[-4] = (start_x + 70, start_y + 320)
+    node_positions[-5] = (start_x + 70, start_y + 390)
+    node_positions[-6] = (start_x + 70, start_y + 460)
 
     # Hardcoded positions for 4 output nodes on the right side of UI panel
     # 0: Up, 1: Down, 2: Left, 3: Right
-    node_positions[0] = (start_x + 330, start_y + 130)
-    node_positions[1] = (start_x + 330, start_y + 230)
-    node_positions[2] = (start_x + 330, start_y + 330)
-    node_positions[3] = (start_x + 330, start_y + 430)
+    node_positions[0] = (start_x + 330, start_y + 140)
+    node_positions[1] = (start_x + 330, start_y + 240)
+    node_positions[2] = (start_x + 330, start_y + 340)
+    node_positions[3] = (start_x + 330, start_y + 440)
 
     # Dynamically calculate positions for any hidden nodes in the middle
     hidden_nodes = [k for k in genome.nodes.keys() if k not in (0, 1, 2, 3)]
@@ -169,6 +266,8 @@ def draw_network(surface, genome, start_x, start_y):
         -2: "F_dy",
         -3: "P_dx",
         -4: "P_dy",
+        -5: "W_dx",
+        -6: "W_dy",
         0: "Up",
         1: "Down",
         2: "Left",
@@ -183,7 +282,7 @@ def draw_network(surface, genome, start_x, start_y):
         # Labels
         label_text = labels.get(node_id, f"H{node_id}")
         txt_surf = font.render(label_text, True, LIGHT_GRAY)
-        if node_id in (-1, -2, -3, -4):
+        if node_id in (-1, -2, -3, -4, -5, -6):
             surface.blit(txt_surf, (pos[0] - txt_surf.get_width() - 16, pos[1] - txt_surf.get_height() // 2))
         elif node_id in (0, 1, 2, 3):
             surface.blit(txt_surf, (pos[0] + 16, pos[1] - txt_surf.get_height() // 2))
@@ -207,14 +306,24 @@ def eval_genomes(genomes, config):
 
     food = Food()
     poison = Poison()
+    # Spawn one Wolf at the edge of the screen before the generation starts
+    wolf = Wolf(center_x=30, center_y=30)
     clock = pygame.time.Clock()
     running = True
+    frame_counter = 0
 
     while running and len(creatures) > 0:
+        frame_counter += 1
+        if frame_counter > 1000:
+            break
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
+        # Update wolf position chasing nearest survivor every frame
+        wolf.chase(creatures)
 
         # Update each creature via its neural network (iterate in reverse for safe popping)
         for i in range(len(creatures) - 1, -1, -1):
@@ -231,14 +340,16 @@ def eval_genomes(genomes, config):
                 ge.pop(i)
                 continue
 
-            # 1. Calculate X and Y distances to Food and Poison
+            # 1. Calculate X and Y distances to Food, Poison, and Wolf
             food_dx = food.rect.centerx - creature.rect.centerx
             food_dy = food.rect.centery - creature.rect.centery
             poison_dx = poison.rect.centerx - creature.rect.centerx
             poison_dy = poison.rect.centery - creature.rect.centery
+            dist_x_wolf = wolf.rect.centerx - creature.rect.centerx
+            dist_y_wolf = wolf.rect.centery - creature.rect.centery
 
-            # 2. Pass all 4 sensory distances to neural network
-            output = nets[i].activate((food_dx, food_dy, poison_dx, poison_dy))
+            # 2. Pass all 6 sensory distances to neural network
+            output = nets[i].activate((food_dx, food_dy, poison_dx, poison_dy, dist_x_wolf, dist_y_wolf))
 
             # 3. Highest output value maps to direction (0: Up, 1: Down, 2: Left, 3: Right)
             decision = output.index(max(output))
@@ -261,16 +372,25 @@ def eval_genomes(genomes, config):
             # 5. Reward +0.1 fitness per frame alive
             ge[i].fitness += 0.1
 
-            # 5. Food collision: +20 fitness and respawn food
+            # 6. Food collision: +20 fitness and respawn food
             if creature.rect.colliderect(food.rect):
                 ge[i].fitness += 20
                 food.respawn()
 
-            # 6. Poison collision: instant kill, fitness penalty, and immediate array removal
+            # 7. Poison collision: instant kill, fitness penalty, and immediate array removal
             if creature.rect.colliderect(poison.rect):
                 ge[i].fitness -= 20
                 creature.alive = False
                 poison.respawn()
+                creatures.pop(i)
+                nets.pop(i)
+                ge.pop(i)
+                continue
+
+            # 8. Wolf collision: instant kill, -30 fitness penalty, and immediate array removal
+            if creature.rect.colliderect(wolf.rect):
+                ge[i].fitness -= 30
+                creature.alive = False
                 creatures.pop(i)
                 nets.pop(i)
                 ge.pop(i)
@@ -286,8 +406,34 @@ def eval_genomes(genomes, config):
         # Simulation field (left 800x600)
         food.draw(screen)
         poison.draw(screen)
+        wolf.draw(screen)
+
+        # Draw blue stamina bar hovering slightly above the Wolf
+        stamina_bar_width = max(0, int((wolf.stamina / wolf.max_stamina) * wolf.rect.width))
+        wolf_bar_x = wolf.rect.x
+        wolf_bar_y = max(0, wolf.rect.y - 6)
+        wolf_bar_height = 3
+
+        # Background track
+        pygame.draw.rect(screen, (180, 180, 180), (wolf_bar_x, wolf_bar_y, wolf.rect.width, wolf_bar_height))
+        # Blue stamina fill
+        if stamina_bar_width > 0:
+            pygame.draw.rect(screen, BLUE, (wolf_bar_x, wolf_bar_y, stamina_bar_width, wolf_bar_height))
         for creature in creatures:
             creature.draw(screen)
+
+            # Draw green/red health bar hovering just above the creature's square
+            bar_color = FOOD_GREEN if creature.energy >= 50 else RED
+            bar_width = max(0, int((creature.energy / creature.max_energy) * creature.rect.width))
+            bar_height = 3
+            bar_x = creature.rect.x
+            bar_y = max(0, creature.rect.y - 6)
+
+            # Tiny background track
+            pygame.draw.rect(screen, (180, 180, 180), (bar_x, bar_y, creature.rect.width, bar_height))
+            # Dynamic energy fill
+            if bar_width > 0:
+                pygame.draw.rect(screen, bar_color, (bar_x, bar_y, bar_width, bar_height))
 
         alpha_genome = None
         # Identify alpha creature with the highest current fitness score
@@ -310,6 +456,11 @@ def eval_genomes(genomes, config):
         # Render neural network of alpha creature on the UI panel
         if alpha_genome is not None:
             draw_network(screen, alpha_genome, start_x=SIM_WIDTH, start_y=0)
+
+        # Display "Time Left" countdown on UI panel
+        time_left = max(0, 1000 - frame_counter)
+        time_text = font.render(f"Time Left: {time_left}", True, YELLOW)
+        screen.blit(time_text, (SIM_WIDTH + (UI_PANEL_WIDTH - time_text.get_width()) // 2, 55))
 
         pygame.display.flip()
         clock.tick(FPS)
