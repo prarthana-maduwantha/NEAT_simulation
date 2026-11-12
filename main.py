@@ -340,15 +340,29 @@ def eval_genomes(genomes, config):
                 ge.pop(i)
                 continue
 
-            # 1. Calculate X and Y distances to Food, Poison, and Wolf
-            food_dx = food.rect.centerx - creature.rect.centerx
-            food_dy = food.rect.centery - creature.rect.centery
-            poison_dx = poison.rect.centerx - creature.rect.centerx
-            poison_dy = poison.rect.centery - creature.rect.centery
-            dist_x_wolf = wolf.rect.centerx - creature.rect.centerx
-            dist_y_wolf = wolf.rect.centery - creature.rect.centery
+            # 1. Calculate raw distances to Food, Poison, and Wolf
+            raw_food_dx = food.rect.centerx - creature.rect.centerx
+            raw_food_dy = food.rect.centery - creature.rect.centery
+            raw_poison_dx = poison.rect.centerx - creature.rect.centerx
+            raw_poison_dy = poison.rect.centery - creature.rect.centery
+            raw_dist_x_wolf = wolf.rect.centerx - creature.rect.centerx
+            raw_dist_y_wolf = wolf.rect.centery - creature.rect.centery
 
-            # 2. Pass all 6 sensory distances to neural network
+            # Fog of War: 200-pixel sight radius
+            SIGHT_RADIUS = 200.0
+            dist_to_food = math.hypot(raw_food_dx, raw_food_dy)
+            dist_to_poison = math.hypot(raw_poison_dx, raw_poison_dy)
+            dist_to_wolf = math.hypot(raw_dist_x_wolf, raw_dist_y_wolf)
+
+            # If beyond 200px sight radius, pass 0 for that target's coordinates
+            food_dx = raw_food_dx if dist_to_food <= SIGHT_RADIUS else 0.0
+            food_dy = raw_food_dy if dist_to_food <= SIGHT_RADIUS else 0.0
+            poison_dx = raw_poison_dx if dist_to_poison <= SIGHT_RADIUS else 0.0
+            poison_dy = raw_poison_dy if dist_to_poison <= SIGHT_RADIUS else 0.0
+            dist_x_wolf = raw_dist_x_wolf if dist_to_wolf <= SIGHT_RADIUS else 0.0
+            dist_y_wolf = raw_dist_y_wolf if dist_to_wolf <= SIGHT_RADIUS else 0.0
+
+            # 2. Pass 6 sensory inputs into neural network
             output = nets[i].activate((food_dx, food_dy, poison_dx, poison_dy, dist_x_wolf, dist_y_wolf))
 
             # 3. Highest output value maps to direction (0: Up, 1: Down, 2: Left, 3: Right)
@@ -452,10 +466,16 @@ def eval_genomes(genomes, config):
             line_overlay = pygame.Surface((SIM_WIDTH, SIM_HEIGHT), pygame.SRCALPHA)
             alpha_pos = alpha_creature.rect.center
 
-            # Faint Green line to Food, Purple line to Poison, Red line to Wolf
-            pygame.draw.aaline(line_overlay, (46, 204, 113, 140), alpha_pos, food.rect.center)
-            pygame.draw.aaline(line_overlay, (155, 89, 182, 140), alpha_pos, poison.rect.center)
-            pygame.draw.aaline(line_overlay, (231, 76, 60, 140), alpha_pos, wolf.rect.center)
+            # Draw 200px Fog of War sight radius ring around Alpha creature
+            pygame.draw.circle(line_overlay, (200, 200, 200, 50), alpha_pos, int(SIGHT_RADIUS), width=1)
+
+            # Draw sensory rays only when target is within 200px sight radius
+            if math.hypot(food.rect.centerx - alpha_pos[0], food.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
+                pygame.draw.aaline(line_overlay, (46, 204, 113, 160), alpha_pos, food.rect.center)
+            if math.hypot(poison.rect.centerx - alpha_pos[0], poison.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
+                pygame.draw.aaline(line_overlay, (155, 89, 182, 160), alpha_pos, poison.rect.center)
+            if math.hypot(wolf.rect.centerx - alpha_pos[0], wolf.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
+                pygame.draw.aaline(line_overlay, (231, 76, 60, 160), alpha_pos, wolf.rect.center)
             screen.blit(line_overlay, (0, 0))
 
             # Draw yellow highlight ring around alpha_creature
