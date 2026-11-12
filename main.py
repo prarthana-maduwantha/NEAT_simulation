@@ -436,6 +436,7 @@ def eval_genomes(genomes, config):
                 pygame.draw.rect(screen, bar_color, (bar_x, bar_y, bar_width, bar_height))
 
         alpha_genome = None
+        alpha_creature = None
         # Identify alpha creature with the highest current fitness score
         if ge:
             max_idx = max(range(len(ge)), key=lambda idx: ge[idx].fitness)
@@ -446,6 +447,16 @@ def eval_genomes(genomes, config):
             global best_genome_overall
             if best_genome_overall is None or alpha_genome.fitness > best_genome_overall.fitness:
                 best_genome_overall = alpha_genome
+
+            # Sensory tracking debug lines for Alpha creature (faint, semi-transparent)
+            line_overlay = pygame.Surface((SIM_WIDTH, SIM_HEIGHT), pygame.SRCALPHA)
+            alpha_pos = alpha_creature.rect.center
+
+            # Faint Green line to Food, Purple line to Poison, Red line to Wolf
+            pygame.draw.aaline(line_overlay, (46, 204, 113, 140), alpha_pos, food.rect.center)
+            pygame.draw.aaline(line_overlay, (155, 89, 182, 140), alpha_pos, poison.rect.center)
+            pygame.draw.aaline(line_overlay, (231, 76, 60, 140), alpha_pos, wolf.rect.center)
+            screen.blit(line_overlay, (0, 0))
 
             # Draw yellow highlight ring around alpha_creature
             pygame.draw.circle(screen, YELLOW, alpha_creature.rect.center, radius=18, width=2)
