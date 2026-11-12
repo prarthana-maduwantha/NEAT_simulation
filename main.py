@@ -13,6 +13,7 @@ SIM_WIDTH = 800
 SIM_HEIGHT = 600
 UI_PANEL_WIDTH = 400
 FPS = 60
+RENDER_MODE = True
 
 # Colors
 WHITE = (255, 255, 255)
@@ -296,6 +297,7 @@ def draw_network(surface, genome, start_x, start_y):
 
 def eval_genomes(genomes, config):
     """Evaluates the fitness of each genome in the population over a simulation generation."""
+    global RENDER_MODE
     nets = []
     ge = []
     creatures = []
@@ -325,6 +327,10 @@ def eval_genomes(genomes, config):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    RENDER_MODE = not RENDER_MODE
+                    print(f"RENDER_MODE: {RENDER_MODE}")
 
         # Update wolf position chasing nearest survivor every frame
         wolf.chase(creatures)
