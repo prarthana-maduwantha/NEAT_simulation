@@ -372,21 +372,21 @@ def eval_genomes(genomes, config):
             dist_left = creature.x
             dist_right = 800 - creature.x
 
-            # 3. Pass 10 sensory inputs into neural network
-            output = nets[i].activate(
-                (
-                    food_dx,
-                    food_dy,
-                    poison_dx,
-                    poison_dy,
-                    dist_x_wolf,
-                    dist_y_wolf,
-                    dist_top,
-                    dist_bottom,
-                    dist_left,
-                    dist_right,
-                )
+            # 3. Pass sensory inputs into neural network (safely matches network input count)
+            all_inputs = (
+                food_dx,
+                food_dy,
+                poison_dx,
+                poison_dy,
+                dist_x_wolf,
+                dist_y_wolf,
+                dist_top,
+                dist_bottom,
+                dist_left,
+                dist_right,
             )
+            expected_in = len(nets[i].input_nodes)
+            output = nets[i].activate(all_inputs[:expected_in])
 
             # 3. Highest output value maps to direction (0: Up, 1: Down, 2: Left, 3: Right)
             decision = output.index(max(output))
@@ -520,7 +520,7 @@ def eval_genomes(genomes, config):
         clock.tick(FPS)
 
 
-def run(config_path):
+def run_neat(config_path):
     """Loads configuration and runs the NEAT evolutionary simulation."""
     # Load configuration
     config = neat.Config(
@@ -531,8 +531,57 @@ def run(config_path):
         config_path,
     )
 
-    # Initialize the Population
-    p = neat.Population(config)
+    p = None
+    checkpoint_file = None
+
+    # 1. Check CLI arguments (e.g. `python main.py 100` or `python main.py checkpoints/neat-checkpoint-100`)
+    for arg in sys.argv[1:]:
+        arg_clean = arg.strip()
+        if os.path.exists(arg_clean):
+            checkpoint_file = arg_clean
+            break
+        candidate = f"checkpoints/neat-checkpoint-{arg_clean}"
+        if os.path.exists(candidate):
+            checkpoint_file = candidate
+            break
+
+    # 2. If not provided via CLI, prompt interactively if checkpoints exist
+    if checkpoint_file is None:
+        available_cps = []
+        if os.path.exists("checkpoints"):
+            available_cps = sorted(
+                [f for f in os.listdir("checkpoints") if f.startswith("neat-checkpoint-")],
+                key=lambda f: int(f.replace("neat-checkpoint-", "")) if f.replace("neat-checkpoint-", "").isdigit() else 0,
+            )
+
+        if available_cps and sys.stdin.isatty():
+            latest_gen = available_cps[-1].replace("neat-checkpoint-", "")
+            print(f"\n[Checkpoint Manager] Found {len(available_cps)} saved checkpoints.")
+            print(f"Latest saved checkpoint is Generation {latest_gen}.")
+            try:
+                user_choice = input(
+                    f"Enter generation number to resume (or press Enter for fresh start) [{latest_gen}]: "
+                ).strip().lower()
+                if user_choice:
+                    target_file = (
+                        user_choice
+                        if user_choice.startswith("checkpoints/")
+                        else f"checkpoints/neat-checkpoint-{user_choice}"
+                    )
+                    if os.path.exists(target_file):
+                        checkpoint_file = target_file
+                    else:
+                        print(f"Checkpoint file '{target_file}' not found. Starting fresh population.")
+            except (EOFError, KeyboardInterrupt):
+                print("\nProceeding with fresh population.")
+
+    # 3. Restore checkpoint if specified, otherwise initialize fresh population
+    if checkpoint_file and os.path.exists(checkpoint_file):
+        print(f"\n--> Resuming evolution from checkpoint: {checkpoint_file}")
+        p = neat.Checkpointer.restore_checkpoint(checkpoint_file)
+    else:
+        print("\n--> Starting fresh population from scratch.")
+        p = neat.Population(config)
 
     # Add StdOutReporter to display statistics in the terminal
     p.add_reporter(neat.StdOutReporter(True))
@@ -560,6 +609,10 @@ def run(config_path):
         print(f"Saved best genome permanently to {save_path}")
     else:
         print("Simulation stopped before any genome could be evaluated.")
+
+
+# Alias run to run_neat
+run = run_neat
 
 
 if __name__ == "__main__":
