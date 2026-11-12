@@ -454,44 +454,9 @@ def eval_genomes(genomes, config):
         if len(creatures) == 0:
             break
 
-        # Rendering
-        screen.fill(WHITE)
-
-        # Simulation field (left 800x600)
-        food.draw(screen)
-        poison.draw(screen)
-        wolf.draw(screen)
-
-        # Draw blue stamina bar hovering slightly above the Wolf
-        stamina_bar_width = max(0, int((wolf.stamina / wolf.max_stamina) * wolf.rect.width))
-        wolf_bar_x = wolf.rect.x
-        wolf_bar_y = max(0, wolf.rect.y - 6)
-        wolf_bar_height = 3
-
-        # Background track
-        pygame.draw.rect(screen, (180, 180, 180), (wolf_bar_x, wolf_bar_y, wolf.rect.width, wolf_bar_height))
-        # Blue stamina fill
-        if stamina_bar_width > 0:
-            pygame.draw.rect(screen, BLUE, (wolf_bar_x, wolf_bar_y, stamina_bar_width, wolf_bar_height))
-        for creature in creatures:
-            creature.draw(screen)
-
-            # Draw green/red health bar hovering just above the creature's square
-            bar_color = FOOD_GREEN if creature.energy >= 50 else RED
-            bar_width = max(0, int((creature.energy / creature.max_energy) * creature.rect.width))
-            bar_height = 3
-            bar_x = creature.rect.x
-            bar_y = max(0, creature.rect.y - 6)
-
-            # Tiny background track
-            pygame.draw.rect(screen, (180, 180, 180), (bar_x, bar_y, creature.rect.width, bar_height))
-            # Dynamic energy fill
-            if bar_width > 0:
-                pygame.draw.rect(screen, bar_color, (bar_x, bar_y, bar_width, bar_height))
-
+        # Identify alpha creature with the highest current fitness score
         alpha_genome = None
         alpha_creature = None
-        # Identify alpha creature with the highest current fitness score
         if ge:
             max_idx = max(range(len(ge)), key=lambda idx: ge[idx].fitness)
             alpha_genome = ge[max_idx]
@@ -502,39 +467,77 @@ def eval_genomes(genomes, config):
             if best_genome_overall is None or alpha_genome.fitness > best_genome_overall.fitness:
                 best_genome_overall = alpha_genome
 
-            # Sensory tracking debug lines for Alpha creature (faint, semi-transparent)
-            line_overlay = pygame.Surface((SIM_WIDTH, SIM_HEIGHT), pygame.SRCALPHA)
-            alpha_pos = alpha_creature.rect.center
+        # Visual rendering occurs only when RENDER_MODE is True
+        if RENDER_MODE:
+            # Rendering
+            screen.fill(WHITE)
 
-            # Draw 200px Fog of War sight radius ring around Alpha creature
-            pygame.draw.circle(line_overlay, (200, 200, 200, 50), alpha_pos, int(SIGHT_RADIUS), width=1)
+            # Simulation field (left 800x600)
+            food.draw(screen)
+            poison.draw(screen)
+            wolf.draw(screen)
 
-            # Draw sensory rays only when target is within 200px sight radius
-            if math.hypot(food.rect.centerx - alpha_pos[0], food.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
-                pygame.draw.aaline(line_overlay, (46, 204, 113, 160), alpha_pos, food.rect.center)
-            if math.hypot(poison.rect.centerx - alpha_pos[0], poison.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
-                pygame.draw.aaline(line_overlay, (155, 89, 182, 160), alpha_pos, poison.rect.center)
-            if math.hypot(wolf.rect.centerx - alpha_pos[0], wolf.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
-                pygame.draw.aaline(line_overlay, (231, 76, 60, 160), alpha_pos, wolf.rect.center)
-            screen.blit(line_overlay, (0, 0))
+            # Draw blue stamina bar hovering slightly above the Wolf
+            stamina_bar_width = max(0, int((wolf.stamina / wolf.max_stamina) * wolf.rect.width))
+            wolf_bar_x = wolf.rect.x
+            wolf_bar_y = max(0, wolf.rect.y - 6)
+            wolf_bar_height = 3
 
-            # Draw yellow highlight ring around alpha_creature
-            pygame.draw.circle(screen, YELLOW, alpha_creature.rect.center, radius=18, width=2)
+            # Background track
+            pygame.draw.rect(screen, (180, 180, 180), (wolf_bar_x, wolf_bar_y, wolf.rect.width, wolf_bar_height))
+            # Blue stamina fill
+            if stamina_bar_width > 0:
+                pygame.draw.rect(screen, BLUE, (wolf_bar_x, wolf_bar_y, stamina_bar_width, wolf_bar_height))
+            for creature in creatures:
+                creature.draw(screen)
 
-        # UI panel (right 400x600)
-        pygame.draw.rect(screen, DARK_GRAY, (SIM_WIDTH, 0, UI_PANEL_WIDTH, WINDOW_HEIGHT))
+                # Draw green/red health bar hovering just above the creature's square
+                bar_color = FOOD_GREEN if creature.energy >= 50 else RED
+                bar_width = max(0, int((creature.energy / creature.max_energy) * creature.rect.width))
+                bar_height = 3
+                bar_x = creature.rect.x
+                bar_y = max(0, creature.rect.y - 6)
 
-        # Render neural network of alpha creature on the UI panel
-        if alpha_genome is not None:
-            draw_network(screen, alpha_genome, start_x=SIM_WIDTH, start_y=0)
+                # Tiny background track
+                pygame.draw.rect(screen, (180, 180, 180), (bar_x, bar_y, creature.rect.width, bar_height))
+                # Dynamic energy fill
+                if bar_width > 0:
+                    pygame.draw.rect(screen, bar_color, (bar_x, bar_y, bar_width, bar_height))
 
-        # Display "Time Left" countdown on UI panel
-        time_left = max(0, 1000 - frame_counter)
-        time_text = font.render(f"Time Left: {time_left}", True, YELLOW)
-        screen.blit(time_text, (SIM_WIDTH + (UI_PANEL_WIDTH - time_text.get_width()) // 2, 55))
+            if alpha_creature is not None:
+                # Sensory tracking debug lines for Alpha creature (faint, semi-transparent)
+                line_overlay = pygame.Surface((SIM_WIDTH, SIM_HEIGHT), pygame.SRCALPHA)
+                alpha_pos = alpha_creature.rect.center
 
-        pygame.display.flip()
-        clock.tick(FPS)
+                # Draw 200px Fog of War sight radius ring around Alpha creature
+                pygame.draw.circle(line_overlay, (200, 200, 200, 50), alpha_pos, int(SIGHT_RADIUS), width=1)
+
+                # Draw sensory rays only when target is within 200px sight radius
+                if math.hypot(food.rect.centerx - alpha_pos[0], food.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
+                    pygame.draw.aaline(line_overlay, (46, 204, 113, 160), alpha_pos, food.rect.center)
+                if math.hypot(poison.rect.centerx - alpha_pos[0], poison.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
+                    pygame.draw.aaline(line_overlay, (155, 89, 182, 160), alpha_pos, poison.rect.center)
+                if math.hypot(wolf.rect.centerx - alpha_pos[0], wolf.rect.centery - alpha_pos[1]) <= SIGHT_RADIUS:
+                    pygame.draw.aaline(line_overlay, (231, 76, 60, 160), alpha_pos, wolf.rect.center)
+                screen.blit(line_overlay, (0, 0))
+
+                # Draw yellow highlight ring around alpha_creature
+                pygame.draw.circle(screen, YELLOW, alpha_creature.rect.center, radius=18, width=2)
+
+            # UI panel (right 400x600)
+            pygame.draw.rect(screen, DARK_GRAY, (SIM_WIDTH, 0, UI_PANEL_WIDTH, WINDOW_HEIGHT))
+
+            # Render neural network of alpha creature on the UI panel
+            if alpha_genome is not None:
+                draw_network(screen, alpha_genome, start_x=SIM_WIDTH, start_y=0)
+
+            # Display "Time Left" countdown on UI panel
+            time_left = max(0, 1000 - frame_counter)
+            time_text = font.render(f"Time Left: {time_left}", True, YELLOW)
+            screen.blit(time_text, (SIM_WIDTH + (UI_PANEL_WIDTH - time_text.get_width()) // 2, 55))
+
+            pygame.display.flip()
+            clock.tick(FPS)
 
 
 def run_neat(config_path):
