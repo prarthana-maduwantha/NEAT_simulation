@@ -397,7 +397,10 @@ def eval_genomes(genomes, config):
             output = nets[i].activate(all_inputs[:expected_in])
 
             # 3. Highest output value maps to direction (0: Up, 1: Down, 2: Left, 3: Right)
-            decision = output.index(max(output))
+            # Break ties randomly so untrained Gen 0 networks flicker and explore instead of locking into one wall
+            max_val = max(output)
+            best_indices = [idx for idx, val in enumerate(output) if abs(val - max_val) < 1e-5]
+            decision = random.choice(best_indices) if len(best_indices) > 1 else best_indices[0]
             creature.move(decision)
 
             # 4. Out-of-bounds / wall collision: catastrophic penalty (-50 fitness)

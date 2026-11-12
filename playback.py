@@ -380,7 +380,9 @@ def main():
         output = net.activate(all_inputs[:expected_in])
 
         # 4. Apply output to creature's movement (0: Up, 1: Down, 2: Left, 3: Right)
-        decision = output.index(max(output))
+        max_val = max(output)
+        best_indices = [idx for idx, val in enumerate(output) if abs(val - max_val) < 1e-5]
+        decision = random.choice(best_indices) if len(best_indices) > 1 else best_indices[0]
         creature.move(decision)
 
         # Wolf hunts the creature
